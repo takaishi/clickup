@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -46,8 +47,8 @@ type GetTasksResponse struct {
 	Tasks []Task `json:"tasks"`
 }
 
-// tasksCmd represents the tasks command
-var tasksCmd = &cobra.Command{
+// getTasksCmd represents the tasks command
+var getTasksCmd = &cobra.Command{
 	Use:   "tasks",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
@@ -81,7 +82,7 @@ func getTasks() ([]Task, error) {
 	page := 0
 
 	for {
-		url := fmt.Sprintf("https://api.clickup.com/api/v2/list/%s/task", listId)
+		endpoint := fmt.Sprintf("https://api.clickup.com/api/v2/list/%s/task", listId)
 		queryArr := []string{}
 		queryMap := map[string]string{
 			"page":           strconv.Itoa(page),
@@ -119,7 +120,7 @@ func getTasks() ([]Task, error) {
 		}
 		client := &http.Client{}
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", url, strings.Join(queryArr, "&")), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", endpoint, url.PathEscape(strings.Join(queryArr, "&"))), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -161,25 +162,25 @@ var assignee string
 var listId string
 
 func init() {
-	getCmd.AddCommand(tasksCmd)
+	getCmd.AddCommand(getTasksCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// tasksCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// getTasksCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// tasksCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	tasksCmd.Flags().String("list", "", "A help for foo")
+	// getTasksCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	getTasksCmd.Flags().String("list", "", "A help for foo")
 
-	tasksCmd.Flags().StringArrayVar(&statuses, "status", []string{}, "")
-	tasksCmd.Flags().StringVar(&updatedAtGtFlag, "updated-at-gt", "", "")
-	tasksCmd.Flags().StringVar(&updatedAtLtFlag, "updated-at-lt", "", "")
-	tasksCmd.Flags().StringVar(&createdAtGtFlag, "created-at-gt", "", "")
-	tasksCmd.Flags().StringVar(&createdAtLtFlag, "created-at-lt", "", "")
-	tasksCmd.Flags().StringVar(&assignee, "assignee-id", "", "")
-	tasksCmd.Flags().StringVar(&listId, "list-id", "", "")
-	tasksCmd.Flags().IntVar(&createdBy, "created-by", 0, "")
+	getTasksCmd.Flags().StringArrayVar(&statuses, "status", []string{}, "")
+	getTasksCmd.Flags().StringVar(&updatedAtGtFlag, "updated-at-gt", "", "")
+	getTasksCmd.Flags().StringVar(&updatedAtLtFlag, "updated-at-lt", "", "")
+	getTasksCmd.Flags().StringVar(&createdAtGtFlag, "created-at-gt", "", "")
+	getTasksCmd.Flags().StringVar(&createdAtLtFlag, "created-at-lt", "", "")
+	getTasksCmd.Flags().StringVar(&assignee, "assignee-id", "", "")
+	getTasksCmd.Flags().StringVar(&listId, "list-id", "", "")
+	getTasksCmd.Flags().IntVar(&createdBy, "created-by", 0, "")
 }
