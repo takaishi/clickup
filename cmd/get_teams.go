@@ -16,22 +16,13 @@ limitations under the License.
 package cmd
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
+	"github.com/raksul/go-clickup/clickup"
 	"os"
 
 	"github.com/spf13/cobra"
 )
-
-type Team struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-type GetTeamsResponse struct {
-	Teams []Team `json:"teams"`
-}
 
 // teamsCmd represents the teams command
 var teamsCmd = &cobra.Command{
@@ -55,33 +46,13 @@ to quickly create a Cobra application.`,
 	},
 }
 
-func getTeams() ([]Team, error) {
-	url := fmt.Sprintf("https://api.clickup.com/api/v2/team")
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", url, nil)
+func getTeams() ([]clickup.Team, error) {
+	client := clickup.NewClient(nil, os.Getenv("CLICKUP_TOKEN"))
+	teams, _, err := client.Teams.GetTeams(context.Background())
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Add("Authorization", os.Getenv("CLICKUP_TOKEN"))
-	req.Header.Add("Content-Type", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		resp.Body.Close()
-		return nil, err
-	}
-	resp.Body.Close()
-
-	var getTeamsResp GetTeamsResponse
-	json.Unmarshal(body, &getTeamsResp)
-	return getTeamsResp.Teams, nil
+	return teams, nil
 }
 
 func init() {

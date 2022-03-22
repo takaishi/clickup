@@ -16,26 +16,26 @@ limitations under the License.
 package cmd
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"github.com/spf13/cobra"
-	"io"
-	"net/http"
+	"github.com/raksul/go-clickup/clickup"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
-type Folder struct {
+type Space struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
-type GetFoldersResponse struct {
-	Folders []Folder `json:"folders"`
+type GetSpacessResponse struct {
+	Spaces []Space `json:"spaces"`
 }
 
-// foldersCmd represents the folders command
-var foldersCmd = &cobra.Command{
-	Use:   "folders",
+// spacesCmd represents the spaces command
+var spacesCmd = &cobra.Command{
+	Use:   "spaces",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -44,61 +44,39 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		folders, err := getFolders()
+		spaces, err := getSpaces()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		for _, folder := range folders {
-			fmt.Printf("%s %s\n", folder.ID, folder.Name)
+		for _, space := range spaces {
+			fmt.Printf("%s %s\n", space.ID, space.Name)
 		}
 	},
 }
 
-func getFolders() ([]Folder, error) {
-	page := 0
-	url := fmt.Sprintf("https://api.clickup.com/api/v2/space/%s/folder?archived=false&page=%d", spaceId, page)
-
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", url, nil)
+func getSpaces() ([]clickup.Space, error) {
+	client := clickup.NewClient(nil, os.Getenv("CLICKUP_TOKEN"))
+	spaces, _, err := client.Spaces.GetSpaces(context.Background(), teamId)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Add("Authorization", os.Getenv("CLICKUP_TOKEN"))
-	req.Header.Add("Content-Type", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		resp.Body.Close()
-		return nil, err
-	}
-	resp.Body.Close()
-
-	var getFoldersResp GetFoldersResponse
-	json.Unmarshal(body, &getFoldersResp)
-	return getFoldersResp.Folders, nil
+	return spaces, nil
 }
 
-var spaceId string
+var teamId string
 
 func init() {
-	getCmd.AddCommand(foldersCmd)
+	getCmd.AddCommand(spacesCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// foldersCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// spacesCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// foldersCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	foldersCmd.Flags().StringVar(&spaceId, "space-id", "", "")
+	// spacesCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	spacesCmd.Flags().StringVar(&teamId, "team-id", "", "")
 }

@@ -16,35 +16,18 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/raksul/go-clickup/clickup"
 	"github.com/spf13/cobra"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
 type GetTasksRequestParameters struct {
 	ListID int `json:"list_id"`
-}
-
-type Task struct {
-	Name    string  `json:"name"`
-	URL     string  `json:"url"`
-	Creator Creator `json:"creator"`
-}
-
-type Creator struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-}
-
-type GetTasksResponse struct {
-	Tasks []Task `json:"tasks"`
 }
 
 // getTasksCmd represents the tasks command
@@ -63,6 +46,15 @@ to quickly create a Cobra application.`,
 			fmt.Println(err)
 			os.Exit(1)
 		}
+		if err := renderTasks(tasks); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	},
+}
+
+func renderTasks(tasks []clickup.Task) error {
+	if output == "text" {
 		if createdBy != 0 {
 			for _, task := range tasks {
 				if task.Creator.ID == createdBy {
@@ -74,88 +66,73 @@ to quickly create a Cobra application.`,
 				fmt.Printf("- [%s](%s)\n", task.Name, task.URL)
 			}
 		}
-	},
+	} else if output == "json" {
+		items := []clickup.Task{}
+		if createdBy != 0 {
+			for _, task := range tasks {
+				if task.Creator.ID == createdBy {
+					items = append(items, task)
+				}
+			}
+			s, err := json.Marshal(items)
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(s))
+		} else {
+			s, err := json.Marshal(tasks)
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(s))
+		}
+	}
+	return nil
 }
 
-func getTasks() ([]Task, error) {
-	tasks := []Task{}
-	page := 0
-
-	for {
-		endpoint := fmt.Sprintf("https://api.clickup.com/api/v2/list/%s/task", listId)
-		queryArr := []string{}
-		queryMap := map[string]string{
-			"page":           strconv.Itoa(page),
-			"subtasks":       "true",
-			"include_closed": "true",
-		}
-		if assignee != "" {
-			queryMap["assignees[]"] = assignee
-		}
-		if assignToMe {
-			resp, err := getAuthorizedUser()
-			if err != nil {
-				return nil, err
-			}
-			queryMap["assignees[]"] = strconv.Itoa(resp.User.ID)
-		}
-		if updatedAtGtFlag != "" {
-			updatedAt, _ := time.Parse("2006-01-02", updatedAtGtFlag)
-			queryMap["date_updated_gt"] = fmt.Sprintf("%d", updatedAt.Unix()*1000)
-		}
-		if updatedAtLtFlag != "" {
-			updatedAt, _ := time.Parse("2006-01-02", updatedAtLtFlag)
-			queryMap["date_updated_lt"] = fmt.Sprintf("%d", updatedAt.Unix()*1000)
-		}
-		if createdAtGtFlag != "" {
-			createdAt, _ := time.Parse("2006-01-02", createdAtGtFlag)
-			queryMap["date_created_gt"] = fmt.Sprintf("%d", createdAt.Unix()*1000)
-		}
-		if createdAtLtFlag != "" {
-			createdAt, _ := time.Parse("2006-01-02", createdAtLtFlag)
-			queryMap["date_created_lt"] = fmt.Sprintf("%d", createdAt.Unix()*1000)
-		}
-
-		for k, v := range queryMap {
-			queryArr = append(queryArr, fmt.Sprintf("%s=%s", k, v))
-		}
-
-		if len(statuses) > 0 {
-			for _, v := range statuses {
-				queryArr = append(queryArr, fmt.Sprintf("statuses[]=%s", v))
-			}
-		}
-		client := &http.Client{}
-
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", endpoint, url.PathEscape(strings.Join(queryArr, "&"))), nil)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Add("Authorization", os.Getenv("CLICKUP_TOKEN"))
-		req.Header.Add("Content-Type", "application/json")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			resp.Body.Close()
-			return nil, err
-		}
-		resp.Body.Close()
-
-		var getTaskResp GetTasksResponse
-		json.Unmarshal(body, &getTaskResp)
-
-		if len(getTaskResp.Tasks) == 0 {
-			break
-		}
-		tasks = append(tasks, getTaskResp.Tasks...)
-		page = page + 1
+func getTasks() ([]clickup.Task, error) {
+	options := clickup.GetTasksOptions{
+		Subtasks:      true,
+		IncludeClosed: true,
 	}
+
+	if assignee != "" {
+		options.Assignees = []string{assignee}
+	}
+	if assignToMe {
+		resp, err := getAuthorizedUser()
+		if err != nil {
+			return nil, err
+		}
+		options.Assignees = []string{strconv.Itoa(resp.ID)}
+	}
+	if updatedAtGtFlag != "" {
+		updatedAt, _ := time.Parse("2006-01-02", updatedAtGtFlag)
+		options.DateUpdatedGt = updatedAt.Unix() * 1000
+	}
+	if updatedAtLtFlag != "" {
+		updatedAt, _ := time.Parse("2006-01-02", updatedAtLtFlag)
+		options.DateUpdatedLt = updatedAt.Unix() * 1000
+	}
+	if createdAtGtFlag != "" {
+		createdAt, _ := time.Parse("2006-01-02", createdAtGtFlag)
+		options.DateCreatedGt = createdAt.Unix() * 1000
+	}
+	if createdAtLtFlag != "" {
+		createdAt, _ := time.Parse("2006-01-02", createdAtLtFlag)
+		options.DateCreatedLt = createdAt.Unix() * 1000
+	}
+
+	if len(statuses) > 0 {
+		options.Statuses = statuses
+	}
+
+	client := clickup.NewClient(nil, os.Getenv("CLICKUP_TOKEN"))
+	tasks, _, err := client.Tasks.GetTasks(context.Background(), listId, &options)
+	if err != nil {
+		return nil, err
+	}
+
 	return tasks, nil
 }
 
@@ -168,6 +145,7 @@ var createdBy int
 var assignee string
 var assignToMe bool
 var listId string
+var output string
 
 func init() {
 	getCmd.AddCommand(getTasksCmd)
@@ -192,4 +170,5 @@ func init() {
 	getTasksCmd.Flags().StringVar(&listId, "list-id", "", "")
 	getTasksCmd.Flags().IntVar(&createdBy, "created-by", 0, "")
 	getTasksCmd.Flags().BoolVar(&assignToMe, "assign-to-me", false, "")
+	getTasksCmd.Flags().StringVar(&output, "output", "text", "")
 }

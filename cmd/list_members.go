@@ -16,10 +16,9 @@ limitations under the License.
 package cmd
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
+	"github.com/raksul/go-clickup/clickup"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -56,34 +55,13 @@ to quickly create a Cobra application.`,
 	},
 }
 
-func getListMembers() ([]ListMember, error) {
-	url := fmt.Sprintf("https://api.clickup.com/api/v2/list/%s/member", listId)
-
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", url, nil)
+func getListMembers() ([]clickup.Member, error) {
+	client := clickup.NewClient(nil, os.Getenv("CLICKUP_TOKEN"))
+	members, _, err := client.Members.GetListMembers(context.Background(), listId)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Add("Authorization", os.Getenv("CLICKUP_TOKEN"))
-	req.Header.Add("Content-Type", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		resp.Body.Close()
-		return nil, err
-	}
-	resp.Body.Close()
-
-	var getListMembersResp GetListMembersResponse
-	json.Unmarshal(body, &getListMembersResp)
-	return getListMembersResp.Members, nil
+	return members, nil
 }
 
 func init() {
