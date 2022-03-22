@@ -92,6 +92,13 @@ func getTasks() ([]Task, error) {
 		if assignee != "" {
 			queryMap["assignees[]"] = assignee
 		}
+		if assignToMe {
+			resp, err := getAuthorizedUser()
+			if err != nil {
+				return nil, err
+			}
+			queryMap["assignees[]"] = strconv.Itoa(resp.User.ID)
+		}
 		if updatedAtGtFlag != "" {
 			updatedAt, _ := time.Parse("2006-01-02", updatedAtGtFlag)
 			queryMap["date_updated_gt"] = fmt.Sprintf("%d", updatedAt.Unix()*1000)
@@ -159,6 +166,7 @@ var createdAtGtFlag string
 var createdAtLtFlag string
 var createdBy int
 var assignee string
+var assignToMe bool
 var listId string
 
 func init() {
@@ -183,4 +191,5 @@ func init() {
 	getTasksCmd.Flags().StringVar(&assignee, "assignee-id", "", "")
 	getTasksCmd.Flags().StringVar(&listId, "list-id", "", "")
 	getTasksCmd.Flags().IntVar(&createdBy, "created-by", 0, "")
+	getTasksCmd.Flags().BoolVar(&assignToMe, "assign-to-me", false, "")
 }
