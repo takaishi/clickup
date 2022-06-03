@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/raksul/go-clickup/clickup"
 	"github.com/spf13/cobra"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -128,8 +129,10 @@ func getTasks() ([]clickup.Task, error) {
 	}
 
 	client := clickup.NewClient(nil, os.Getenv("CLICKUP_TOKEN"))
-	tasks, _, err := client.Tasks.GetTasks(context.Background(), listId, &options)
+	tasks, resp, err := client.Tasks.GetTasks(context.Background(), listId, &options)
 	if err != nil {
+		body, _ := ioutil.ReadAll(resp.Body)
+		fmt.Println(string(body))
 		return nil, err
 	}
 
