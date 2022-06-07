@@ -34,13 +34,8 @@ type GetTasksRequestParameters struct {
 // getTasksCmd represents the tasks command
 var getTasksCmd = &cobra.Command{
 	Use:   "tasks",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Get tasks.",
+	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
 		tasks, err := getTasks()
 		if err != nil {
@@ -153,25 +148,14 @@ var output string
 func init() {
 	getCmd.AddCommand(getTasksCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// getTasksCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// getTasksCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	getTasksCmd.Flags().String("list", "", "A help for foo")
-
-	getTasksCmd.Flags().StringArrayVar(&statuses, "status", []string{}, "")
-	getTasksCmd.Flags().StringVar(&updatedAtGtFlag, "updated-at-gt", "", "")
-	getTasksCmd.Flags().StringVar(&updatedAtLtFlag, "updated-at-lt", "", "")
-	getTasksCmd.Flags().StringVar(&createdAtGtFlag, "created-at-gt", "", "")
-	getTasksCmd.Flags().StringVar(&createdAtLtFlag, "created-at-lt", "", "")
+	getTasksCmd.Flags().StringArrayVar(&statuses, "status", []string{}, "e.g. --status 'IN PROGRESS' --status 'OPEN'")
+	getTasksCmd.Flags().StringVar(&updatedAtGtFlag, "updated-at-gt", "", "format: YYYY-MM-DD")
+	getTasksCmd.Flags().StringVar(&updatedAtLtFlag, "updated-at-lt", "", "format: YYYY-MM-DD")
+	getTasksCmd.Flags().StringVar(&createdAtGtFlag, "created-at-gt", "", "format: YYYY-MM-DD")
+	getTasksCmd.Flags().StringVar(&createdAtLtFlag, "created-at-lt", "", "format: YYYY-MM-DD")
 	getTasksCmd.Flags().StringVar(&assignee, "assignee-id", "", "")
 	getTasksCmd.Flags().StringVar(&listId, "list-id", "", "")
 	getTasksCmd.Flags().IntVar(&createdBy, "created-by", 0, "")
-	getTasksCmd.Flags().BoolVar(&assignToMe, "assign-to-me", false, "")
-	getTasksCmd.Flags().StringVar(&output, "output", "text", "")
+	getTasksCmd.Flags().BoolVar(&assignToMe, "assign-to-me", false, "Boolean. If true, filtering tasks assigned to you.")
+	getTasksCmd.Flags().StringVar(&output, "output", "text", "formatting style of command output. `text` or `json`.")
 }
